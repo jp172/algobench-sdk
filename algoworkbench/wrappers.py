@@ -1,103 +1,114 @@
 import inspect
-from functools import wraps
+import pickle
+import random
+import subprocess
+import os
+from functools import partial, wraps
+import sys
 
-def upload_class_definition(item):
-    print(f"uploading class {item}")
-    print(f"Content: {inspect.getsource(item)}")
+from .dependency_finding import _get_local_files
 
-def upload_function(func_type, func):
-    """
-    Simulates uploading a function's metadata and source code.
-    You can replace this with actual logic (e.g., HTTP request, database save).
-    """
-    func_metadata = {
-        "type": func_type,
-        "name": func.__name__,
-        "source_code": inspect.getsource(func),
-    }
+ALGO_WORKBENCH_ENDPOINT = "https://algoworkbench.com/upload"
 
-    annotations = func.__annotations__
-    print("Function annotations:", annotations)
-    # Look for custom classes in the annotations
-    for param, annotation in annotations.items():
-        # Check if the annotation is a generic type, e.g., list[Item]
-        if hasattr(annotation, "__origin__") and annotation.__origin__ is list:
-            # Extract the type of the list elements (e.g., Item)
-            item_type = annotation.__args__[0]
-            if inspect.isclass(item_type):
-                # Upload the class definition for the list element type
-                upload_class_definition(item_type)
+# PLAN
+# 2. Server-side: Store the uploaded data
+# 3. Server-side: Replicate function run.
+#   - Fetch all instances, copy into docker container, run, feasibility check, score, copy results back.
+# 4. Server-side: Create new functions and run it.
 
-    func_module = inspect.getmodule(func)
-    module_globals = func_module.__dict__
-    # Scan function body for references to custom classes
-    for name, obj in module_globals.items():
-        if inspect.isclass(obj) and obj.__module__ == func_module.__name__:
-            # Upload any custom classes defined in the module
-            upload_class_definition(obj)
+# Essential features
+# * mapping of input and output args from compute to input args of feasibility and score.
+# * do a smart evaluation of new functions. Compute on small instances first, or instances that fail often (or where many fcts score low?)
+# to save on compute.
 
-    print(f"Uploading {func_type} function '{func.__name__}'")
-    print("Uploaded data:", func_metadata)
+# --> feature: detect corner cases that the function doesn't handle well.
+# --> load test the function on a variety of instances.
+# --> feature: detect if the function is slow on some instances.
 
-def upload_call_arguments(func_type, func_name, args, kwargs):
-    """
-    Uploads arguments of a function call (each time it's invoked).
-    """
-    call_metadata = {
-        "type": func_type,
-        "name": func_name,
-        "args": args,
-        "kwargs": kwargs,
-    }
-    print(f"Uploading arguments for {func_type} function '{func_name}'...")
-    print("Uploaded call arguments:", call_metadata)
 
-# Decorator registry to store marked functions
-FUNCTION_REGISTRY = {
-    'compute': None,
-    'feasibility': None,
-    'score': None,
-}
+class Uploader:
 
-# Decorator for marking compute functions
-def compute(func):
+    def __init__(self, root="upload"):
+        self.path = root
+        pass
+
+
+    def upload_python_object(self, func_name, object, file_name):
+        # create directory if it doesn't exist
+        os.makedirs(self.path + f"/{func_name}", exist_ok=True)
+        with open(self.path + f"/{func_name}/{file_name}", "wb") as f:
+            print(func_name, file_name, object)
+            if isinstance(object, str):
+                f.write(object.encode())
+            else:
+                f.write(pickle.dumps(object))
+
+    def upload_file(self, func_name, file_path):
+        file_name = os.path.basename(file_path)
+        # create directory if it doesn't exist
+        print(func_name, file_path)
+        os.makedirs(self.path + f"/{func_name}", exist_ok=True)
+        with open(self.path + f"/{func_name}/{file_name}", "w") as f:
+            with open(file_path, "r") as f2:
+                f.write(f2.read())
+
+
+uploader = Uploader()
+
+
+def upload_input(func_name, args, kwargs):
+    uploader.upload_python_object(func_name, args, "args")
+    uploader.upload_python_object(func_name, kwargs, "kwargs")
+
+def upload_result(func_name, result):
+    uploader.upload_python_object(func_name, result, "result")
+
+def upload_function(func_name, func, uploaded_file_name):
+    try:
+        source_code = inspect.getsource(func)
+        uploader.upload_python_object(func_name, source_code, uploaded_file_name)
+    except Exception as e:
+        print("Could not upload function:", e)
+
+def _upload_entire_env(func, func_name):
+    python_version = sys.version_info
+    uploader.upload_python_object("env", f"{python_version.major}.{python_version.minor}", "python_version.txt")
+
+    try:
+        requirements = subprocess.check_output(["pip", "freeze"], text=True)
+    except Exception as e:
+        requirements = "# Could not run pip freeze\n"
+    uploader.upload_python_object("env", requirements, "requirements.txt")
+
+    for path in _get_local_files(func):
+        uploader.upload_file("env", path)
+
+
+def generic_wrapper(func, name: str, upload_args: bool=True, upload_results: bool=True, upload_env: str=False):
+    count = 0
     @wraps(func)
     def wrapper(*args, **kwargs):
-        print(f"Running compute function: {func.__name__}")
+        nonlocal count
+        count += 1
+        func_name = name + "_{}".format(count)
+        if upload_args:
+            upload_input(func_name, args, kwargs)
         result = func(*args, **kwargs)
-        upload_call_arguments("compute", func.__name__, args, kwargs)
-        print(f"Compute result: {result}")
+        if upload_results:
+            upload_result(func_name, result)
         return result
     
-    # Register the function
-    FUNCTION_REGISTRY['compute'] = func
-    upload_function("compute", func)
+    if not getattr(wrapper, f"_uploaded_env", False) and upload_env:
+        _upload_entire_env(func, name)
+        setattr(wrapper, f"_uploaded_env", True)
+
+    if not getattr(wrapper, f"_uploaded_func_{name}", False):
+        upload_function("wrapped_fcts", func, f"{name}.py")
+        setattr(wrapper, f"_uploaded_func_{name}", True)
+    
     return wrapper
 
-# Decorator for marking feasibility functions
-def feasibility(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        print(f"Running feasibility function: {func.__name__}")
-        result = func(*args, **kwargs)
-        print(f"Feasibility result: {'Feasible' if result else 'Not Feasible'}")
-        return result
-    
-    # Register the function
-    FUNCTION_REGISTRY['feasibility'] = func
-    upload_function("feasibility", func)
-    return wrapper
 
-# Decorator for marking score functions
-def score(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        print(f"Running score function: {func.__name__}")
-        result = func(*args, **kwargs)
-        print(f"Score result: {result}")
-        return result
-    
-    # Register the function
-    FUNCTION_REGISTRY['score'] = func
-    upload_function("score", func)
-    return wrapper
+compute = partial(generic_wrapper, name="compute", upload_env=True)
+feasibility = partial(generic_wrapper, name="feasibility")
+score = partial(generic_wrapper, name="score")
