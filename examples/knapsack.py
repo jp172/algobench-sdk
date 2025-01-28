@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from algoworkbench import compute, feasibility, score
 from test import test
+from examples.test_folder import another_test
 
 @dataclass
 class Item:
@@ -32,3 +33,4 @@ print(check(result, 5), score(result))
 
 solve(items, 8)
 test()
+another_test.another_test()

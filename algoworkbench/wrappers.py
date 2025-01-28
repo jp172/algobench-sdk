@@ -10,11 +10,10 @@ from .dependency_finding import _get_local_files
 
 ALGO_WORKBENCH_ENDPOINT = "https://algoworkbench.com/upload"
 
-# PLAN
-# 2. Server-side: Store the uploaded data
+# PROTOTYPE
 # 3. Server-side: Replicate function run.
 #   - Fetch all instances, copy into docker container, run, feasibility check, score, copy results back.
-# 4. Server-side: Create new functions and run it.
+# 4. Server-side: Generate new functions
 
 # Essential features
 # * mapping of input and output args from compute to input args of feasibility and score.
@@ -25,32 +24,40 @@ ALGO_WORKBENCH_ENDPOINT = "https://algoworkbench.com/upload"
 # --> load test the function on a variety of instances.
 # --> feature: detect if the function is slow on some instances.
 
-
 class Uploader:
 
-    def __init__(self, root="upload"):
-        self.path = root
+    def __init__(self, prefix="upload"):
+        self.path_prefix = prefix
         pass
 
 
     def upload_python_object(self, func_name, object, file_name):
         # create directory if it doesn't exist
-        os.makedirs(self.path + f"/{func_name}", exist_ok=True)
-        with open(self.path + f"/{func_name}/{file_name}", "wb") as f:
+        path = self.path_prefix + f"/{func_name}"
+        file = f"{path}/{file_name}"
+        
+        os.makedirs(path, exist_ok=True)
+        with open(file, "wb") as f:
             print(func_name, file_name, object)
             if isinstance(object, str):
                 f.write(object.encode())
             else:
                 f.write(pickle.dumps(object))
 
-    def upload_file(self, func_name, file_path):
+    def upload_file(self, file_path):
+        ROOT_DIR = os.path.abspath(os.curdir)
+
         file_name = os.path.basename(file_path)
-        # create directory if it doesn't exist
-        print(func_name, file_path)
-        os.makedirs(self.path + f"/{func_name}", exist_ok=True)
-        with open(self.path + f"/{func_name}/{file_name}", "w") as f:
-            with open(file_path, "r") as f2:
-                f.write(f2.read())
+        folder_path = os.path.dirname(file_path)
+
+        source_path =  os.path.join(ROOT_DIR, file_path)
+
+        target_path = f"{self.path_prefix}/env/{folder_path}"
+        os.makedirs(target_path, exist_ok=True)
+
+        with open(f"{target_path}/{file_name}", "w") as target:
+            with open(source_path, "r") as source:
+                target.write(source.read())
 
 
 uploader = Uploader()
@@ -81,7 +88,7 @@ def _upload_entire_env(func, func_name):
     uploader.upload_python_object("env", requirements, "requirements.txt")
 
     for path in _get_local_files(func):
-        uploader.upload_file("env", path)
+        uploader.upload_file(path)
 
 
 def generic_wrapper(func, name: str, upload_args: bool=True, upload_results: bool=True, upload_env: str=False):
