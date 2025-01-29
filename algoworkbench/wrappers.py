@@ -1,18 +1,17 @@
 import inspect
 import pickle
-import random
 import subprocess
 import os
 from functools import partial, wraps
 import sys
 
-from .dependency_finding import _get_local_files
+from algoworkbench.dependency_finding import _get_local_files
 
 ALGO_WORKBENCH_ENDPOINT = "https://algoworkbench.com/upload"
 
 # PROTOTYPE
-# 3. Server-side: Replicate function run.
-#   - Fetch all instances, copy into docker container, run, feasibility check, score, copy results back.
+# 3. Server-side: Replicate function run: Fetch one instances, copy into docker container, run, feasibility check, score, copy results back.
+# instance_id, algorithm_id, solution, feasibility, score -> DB
 # 4. Server-side: Generate new functions
 
 # Essential features
@@ -20,7 +19,7 @@ ALGO_WORKBENCH_ENDPOINT = "https://algoworkbench.com/upload"
 # * do a smart evaluation of new functions. Compute on small instances first, or instances that fail often (or where many fcts score low?)
 # to save on compute.
 
-# --> feature: detect corner cases that the function doesn't handle well.
+# --> feature: detect corner cases that the function upload doesn't handle well.
 # --> load test the function on a variety of instances.
 # --> feature: detect if the function is slow on some instances.
 
@@ -28,8 +27,6 @@ class Uploader:
 
     def __init__(self, prefix="upload"):
         self.path_prefix = prefix
-        pass
-
 
     def upload_python_object(self, func_name, object, file_name):
         # create directory if it doesn't exist
@@ -59,7 +56,6 @@ class Uploader:
             with open(source_path, "r") as source:
                 target.write(source.read())
 
-
 uploader = Uploader()
 
 
@@ -73,11 +69,12 @@ def upload_result(func_name, result):
 def upload_function(func_name, func, uploaded_file_name):
     try:
         source_code = inspect.getsource(func)
+        filepath = inspect.getfile(func)
         uploader.upload_python_object(func_name, source_code, uploaded_file_name)
     except Exception as e:
         print("Could not upload function:", e)
 
-def _upload_entire_env(func, func_name):
+def _upload_entire_env(func):
     python_version = sys.version_info
     uploader.upload_python_object("env", f"{python_version.major}.{python_version.minor}", "python_version.txt")
 
@@ -106,7 +103,7 @@ def generic_wrapper(func, name: str, upload_args: bool=True, upload_results: boo
         return result
     
     if not getattr(wrapper, f"_uploaded_env", False) and upload_env:
-        _upload_entire_env(func, name)
+        _upload_entire_env(func)
         setattr(wrapper, f"_uploaded_env", True)
 
     if not getattr(wrapper, f"_uploaded_func_{name}", False):

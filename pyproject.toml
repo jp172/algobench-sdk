@@ -7,7 +7,6 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.13"
-networkx = "^3.4.2"
 
 
 [build-system]
