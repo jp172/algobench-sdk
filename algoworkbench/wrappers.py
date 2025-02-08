@@ -5,7 +5,7 @@ import os
 from functools import partial, wraps
 import sys
 
-from algoworkbench.dependency_finding import _get_local_files
+from .dependency_finding import _get_local_files
 
 ALGO_WORKBENCH_ENDPOINT = "https://algoworkbench.com/upload"
 
