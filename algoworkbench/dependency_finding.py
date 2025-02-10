@@ -25,7 +25,6 @@ def get_imports(file_path):
     imports = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            print(node)
             for alias in node.names:
                 imports.append(alias.name)
         elif isinstance(node, ast.ImportFrom):

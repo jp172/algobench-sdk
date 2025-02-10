@@ -1,4 +1,5 @@
 import inspect
+import logging
 import pickle
 import subprocess
 import os
@@ -8,9 +9,10 @@ import sys
 from .dependency_finding import _get_local_files
 
 ALGO_WORKBENCH_ENDPOINT = "https://algoworkbench.com/upload"
+NO_OP = False
 
 # PROTOTYPE
-# 3. Server-side: Replicate function run: Fetch one instances, copy into docker container, run, feasibility check, score, copy results back.
+# 3. Server-side: Replicate function run: Fetch one instances, set up poetry, run, feasibility check, score, copy results back.
 # instance_id, algorithm_id, solution, feasibility, score -> DB
 # 4. Server-side: Generate new functions
 
@@ -35,7 +37,7 @@ class Uploader:
         
         os.makedirs(path, exist_ok=True)
         with open(file, "wb") as f:
-            print(func_name, file_name, object)
+            logging.info(f"Uploading {func_name}, {file_name}, {object}")
             if isinstance(object, str):
                 f.write(object.encode())
             else:
@@ -66,20 +68,22 @@ def upload_input(func_name, args, kwargs):
 def upload_result(func_name, result):
     uploader.upload_python_object(func_name, result, "result")
 
-def upload_function(func_name, func, uploaded_file_name):
+def upload_function(func, uploaded_file_name):
     try:
         source_code = inspect.getsource(func)
-        filepath = inspect.getfile(func)
-        uploader.upload_python_object(func_name, source_code, uploaded_file_name)
+        if "<locals>" in func.__qualname__:
+            raise ValueError("Callable must be defined at the module level.")
+        func_name = f"{func.__module__}:{func.__qualname__}"
+        uploader.upload_python_object("Function", source_code, uploaded_file_name)
     except Exception as e:
-        print("Could not upload function:", e)
+        logging.warning(f"Could not upload function {func_name}:", e)
 
 def _upload_entire_env(func):
     python_version = sys.version_info
     uploader.upload_python_object("env", f"{python_version.major}.{python_version.minor}", "python_version.txt")
 
     try:
-        requirements = subprocess.check_output(["pip", "freeze"], text=True)
+        requirements = subprocess.check_output([sys.executable, "-m", "pip", "freeze"], text=True)
     except Exception as e:
         requirements = "# Could not run pip freeze\n"
     uploader.upload_python_object("env", requirements, "requirements.txt")
@@ -95,19 +99,22 @@ def generic_wrapper(func, name: str, upload_args: bool=True, upload_results: boo
         nonlocal count
         count += 1
         func_name = name + "_{}".format(count)
-        if upload_args:
+        if upload_args and not NO_OP:
             upload_input(func_name, args, kwargs)
         result = func(*args, **kwargs)
-        if upload_results:
+        if upload_results and not NO_OP:
             upload_result(func_name, result)
         return result
+    
+    if NO_OP:
+        return wrapper
     
     if not getattr(wrapper, f"_uploaded_env", False) and upload_env:
         _upload_entire_env(func)
         setattr(wrapper, f"_uploaded_env", True)
 
     if not getattr(wrapper, f"_uploaded_func_{name}", False):
-        upload_function("wrapped_fcts", func, f"{name}.py")
+        upload_function(func, f"{name}.py")
         setattr(wrapper, f"_uploaded_func_{name}", True)
     
     return wrapper

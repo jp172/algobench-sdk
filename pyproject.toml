@@ -1,12 +1,13 @@
 [tool.poetry]
 name = "algoworkbench"
 version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
+description = "Supercharging your algorithm development"
+authors = ["Julius"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.13"
+pytest = "^8.3.4"
 
 
 [build-system]
