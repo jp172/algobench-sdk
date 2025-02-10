@@ -1,6 +1,6 @@
 import inspect
 import logging
-import pickle
+import dill as  pickle
 import subprocess
 import os
 from functools import partial, wraps
