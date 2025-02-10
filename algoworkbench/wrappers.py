@@ -9,7 +9,11 @@ import sys
 from .dependency_finding import _get_local_files
 
 ALGO_WORKBENCH_ENDPOINT = "https://algoworkbench.com/upload"
-NO_OP = False
+
+class NoOp:
+    active = False
+
+no_op = NoOp()
 
 # PROTOTYPE
 # 3. Server-side: Replicate function run: Fetch one instances, set up poetry, run, feasibility check, score, copy results back.
@@ -97,25 +101,24 @@ def generic_wrapper(func, name: str, upload_args: bool=True, upload_results: boo
     @wraps(func)
     def wrapper(*args, **kwargs):
         nonlocal count
+
+        if count == 0 and not no_op.active:
+            if not getattr(wrapper, f"_uploaded_env", False) and upload_env:
+                _upload_entire_env(func)
+                setattr(wrapper, f"_uploaded_env", True)
+
+            if not getattr(wrapper, f"_uploaded_func_{name}", False):
+                upload_function(func, f"{name}.py")
+                setattr(wrapper, f"_uploaded_func_{name}", True)
+
         count += 1
         func_name = name + "_{}".format(count)
-        if upload_args and not NO_OP:
+        if upload_args and not no_op.active:
             upload_input(func_name, args, kwargs)
         result = func(*args, **kwargs)
-        if upload_results and not NO_OP:
+        if upload_results and not no_op.active:
             upload_result(func_name, result)
         return result
-    
-    if NO_OP:
-        return wrapper
-    
-    if not getattr(wrapper, f"_uploaded_env", False) and upload_env:
-        _upload_entire_env(func)
-        setattr(wrapper, f"_uploaded_env", True)
-
-    if not getattr(wrapper, f"_uploaded_func_{name}", False):
-        upload_function(func, f"{name}.py")
-        setattr(wrapper, f"_uploaded_func_{name}", True)
     
     return wrapper
 
