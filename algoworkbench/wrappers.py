@@ -101,7 +101,7 @@ def generic_wrapper(func, name: str, upload_args: bool=True, upload_results: boo
     @wraps(func)
     def wrapper(*args, **kwargs):
         nonlocal count
-
+        print(f"{func} no op: {no_op.active}")
         if count == 0 and not no_op.active:
             if not getattr(wrapper, f"_uploaded_env", False) and upload_env:
                 _upload_entire_env(func)
