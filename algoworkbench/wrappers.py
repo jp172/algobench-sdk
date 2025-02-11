@@ -1,3 +1,4 @@
+from enum import Enum
 import inspect
 import logging
 import dill as  pickle
@@ -10,52 +11,38 @@ from .dependency_finding import _get_local_files
 
 ALGO_WORKBENCH_ENDPOINT = "https://algoworkbench.com/upload"
 
+# TODO can this just be a variable?
 class NoOp:
     active = False
 
 no_op = NoOp()
 
-# PROTOTYPE
-# 3. Server-side: Replicate function run: Fetch one instances, set up poetry, run, feasibility check, score, copy results back.
-# instance_id, algorithm_id, solution, feasibility, score -> DB
-# 4. Server-side: Generate new functions
-
-# Essential features
-# * mapping of input and output args from compute to input args of feasibility and score.
-# * do a smart evaluation of new functions. Compute on small instances first, or instances that fail often (or where many fcts score low?)
-# to save on compute.
-
-# --> feature: detect corner cases that the function upload doesn't handle well.
-# --> load test the function on a variety of instances.
-# --> feature: detect if the function is slow on some instances.
-
 class Uploader:
 
-    def __init__(self, prefix="upload"):
+    def __init__(self, prefix="../awb-backend/examples"):
         self.path_prefix = prefix
 
-    def upload_python_object(self, func_name, object, file_name):
-        # create directory if it doesn't exist
-        path = self.path_prefix + f"/{func_name}"
-        file = f"{path}/{file_name}"
+    def upload_python_object(self, path_suffix, object, file_name):
+        full_path = self.path_prefix + f"/{path_suffix}/{file_name}"
+        path = os.path.dirname(full_path)
+        file_name = os.path.basename(path)
         
         os.makedirs(path, exist_ok=True)
-        with open(file, "wb") as f:
-            logging.info(f"Uploading {func_name}, {file_name}, {object}")
+        with open(full_path, "wb") as f:
+            logging.info(f"Uploading {file_name}, {object}")
             if isinstance(object, str):
                 f.write(object.encode())
             else:
                 f.write(pickle.dumps(object))
 
-    def upload_file(self, file_path):
+    def upload_file(self, path_suffix, file_path):
         ROOT_DIR = os.path.abspath(os.curdir)
 
         file_name = os.path.basename(file_path)
         folder_path = os.path.dirname(file_path)
-
         source_path =  os.path.join(ROOT_DIR, file_path)
 
-        target_path = f"{self.path_prefix}/env/{folder_path}"
+        target_path = f"{self.path_prefix}/{path_suffix}/{folder_path}"
         os.makedirs(target_path, exist_ok=True)
 
         with open(f"{target_path}/{file_name}", "w") as target:
@@ -66,21 +53,22 @@ uploader = Uploader()
 
 
 def upload_input(func_name, args, kwargs):
-    uploader.upload_python_object(func_name, args, "args")
-    uploader.upload_python_object(func_name, kwargs, "kwargs")
+    uploader.upload_python_object(func_name, args, "args.pkl")
+    uploader.upload_python_object(func_name, kwargs, "kwargs.pkl")
 
 def upload_result(func_name, result):
-    uploader.upload_python_object(func_name, result, "result")
+    uploader.upload_python_object(func_name, result, "solution.pkl")
 
-def upload_function(func, uploaded_file_name):
+def upload_function(func, file_path, file_name):
     try:
         source_code = inspect.getsource(func)
         if "<locals>" in func.__qualname__:
             raise ValueError("Callable must be defined at the module level.")
         func_name = f"{func.__module__}:{func.__qualname__}"
-        uploader.upload_python_object("Function", source_code, uploaded_file_name)
+        logging.info(source_code)
+        uploader.upload_python_object(file_path, source_code, file_name)
     except Exception as e:
-        logging.warning(f"Could not upload function {func_name}:", e)
+        logging.warning(f"Could not upload function {func}: {e}")
 
 def _upload_entire_env(func):
     python_version = sys.version_info
@@ -93,13 +81,20 @@ def _upload_entire_env(func):
     uploader.upload_python_object("env", requirements, "requirements.txt")
 
     for path in _get_local_files(func):
-        uploader.upload_file(path)
+        uploader.upload_file("env", path)
 
 
-def generic_wrapper(func, name: str, upload_args: bool=True, upload_results: bool=True, upload_env: str=False):
+class WrapperType(Enum):
+    COMPUTE = "compute"
+    SCORE = "score"
+    FEASIBILITY = "feasibility"
+    
+
+def generic_wrapper(func, type: WrapperType, project: str="default", upload_args: bool=True, upload_results: bool=True, upload_env: str=False):
     count = 0
     @wraps(func)
     def wrapper(*args, **kwargs):
+        name = project + f"/{type.value}"
         nonlocal count
         print(f"{func} no op: {no_op.active}")
         if count == 0 and not no_op.active:
@@ -108,7 +103,7 @@ def generic_wrapper(func, name: str, upload_args: bool=True, upload_results: boo
                 setattr(wrapper, f"_uploaded_env", True)
 
             if not getattr(wrapper, f"_uploaded_func_{name}", False):
-                upload_function(func, f"{name}.py")
+                upload_function(func, project, f"{type.value}.py")
                 setattr(wrapper, f"_uploaded_func_{name}", True)
 
         count += 1
@@ -122,7 +117,14 @@ def generic_wrapper(func, name: str, upload_args: bool=True, upload_results: boo
     
     return wrapper
 
+def create_decorator(wrapper_type, upload_env=False):
+    def decorator(func=None, **kwargs):
+        if func is None:
+            return lambda f: generic_wrapper(f, type=wrapper_type, upload_env=upload_env, **kwargs)
+        return generic_wrapper(func, type=wrapper_type, upload_env=upload_env)
+    return decorator
 
-compute = partial(generic_wrapper, name="compute", upload_env=True)
-feasibility = partial(generic_wrapper, name="feasibility")
-score = partial(generic_wrapper, name="score")
+
+compute = create_decorator(WrapperType.COMPUTE, upload_env=True)
+feasibility = create_decorator(WrapperType.FEASIBILITY)
+score = create_decorator(WrapperType.SCORE)
