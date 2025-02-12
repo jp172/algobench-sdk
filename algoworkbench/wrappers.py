@@ -4,7 +4,7 @@ import logging
 import dill as  pickle
 import subprocess
 import os
-from functools import partial, wraps
+from functools import wraps
 import sys
 
 from .dependency_finding import _get_local_files
@@ -59,35 +59,40 @@ def upload_input(func_name, args, kwargs):
 def upload_result(func_name, result):
     uploader.upload_python_object(func_name, result, "solution.pkl")
 
-def upload_function(func, file_path, file_name):
-    try:
-        source_code = inspect.getsource(func)
-        if "<locals>" in func.__qualname__:
-            raise ValueError("Callable must be defined at the module level.")
-        func_name = f"{func.__module__}:{func.__qualname__}"
-        logging.info(source_code)
-        uploader.upload_python_object(file_path, source_code, file_name)
-    except Exception as e:
-        logging.warning(f"Could not upload function {func}: {e}")
-
-def _upload_entire_env(func):
-    python_version = sys.version_info
-    uploader.upload_python_object("env", f"{python_version.major}.{python_version.minor}", "python_version.txt")
-
-    try:
-        requirements = subprocess.check_output([sys.executable, "-m", "pip", "freeze"], text=True)
-    except Exception as e:
-        requirements = "# Could not run pip freeze\n"
-    uploader.upload_python_object("env", requirements, "requirements.txt")
-
-    for path in _get_local_files(func):
-        uploader.upload_file("env", path)
-
-
 class WrapperType(Enum):
     COMPUTE = "compute"
     SCORE = "score"
     FEASIBILITY = "feasibility"
+    
+def store_function(func, type: WrapperType):
+    try:
+        # get path to function
+        file_path = inspect.getsourcefile(func)
+        ROOT_DIR = os.path.abspath(os.curdir)
+        # make path relative to current directory
+        file_path = os.path.relpath(file_path, ROOT_DIR)
+
+        if "<locals>" in func.__qualname__:
+            raise ValueError("Callable must be defined at the module level.")
+        func_name = f"{func.__module__}:{func.__qualname__}"
+        logging.info(f"Storing {type.value} function {func_name} at path {file_path}")
+    except Exception as e:
+        logging.warning(f"Could obtain function reference for {func}: {e}")
+
+def _upload_entire_env(func, project):
+    path_prefix = project + "/env"
+    python_version = sys.version_info
+    logging.info(f"Storing python version: {python_version.major}.{python_version.minor}")
+
+    try:
+        # TODO filter down requirements to what we only need
+        requirements = subprocess.check_output([sys.executable, "-m", "pip", "freeze"], text=True)
+    except Exception as e:
+        requirements = "# Could not run pip freeze\n"
+    uploader.upload_python_object(path_prefix, requirements, "requirements.txt")
+
+    for file_path in _get_local_files(func):
+        uploader.upload_file(path_prefix, file_path)
     
 
 def generic_wrapper(func, type: WrapperType, project: str="default", upload_args: bool=True, upload_results: bool=True, upload_env: str=False):
@@ -99,15 +104,15 @@ def generic_wrapper(func, type: WrapperType, project: str="default", upload_args
         logging.debug(f"{func} no op: {no_op.active}")
         if count == 0 and not no_op.active:
             if not getattr(wrapper, f"_uploaded_env", False) and upload_env:
-                _upload_entire_env(func)
+                _upload_entire_env(func, project)
                 setattr(wrapper, f"_uploaded_env", True)
 
             if not getattr(wrapper, f"_uploaded_func_{name}", False):
-                upload_function(func, project, f"{type.value}.py")
+                store_function(func, type)
                 setattr(wrapper, f"_uploaded_func_{name}", True)
 
         count += 1
-        func_name = name + "_{}".format(count)
+        func_name = name + "/{}".format(count)
         if upload_args and not no_op.active:
             upload_input(func_name, args, kwargs)
         result = func(*args, **kwargs)
