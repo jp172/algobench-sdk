@@ -19,7 +19,7 @@ no_op = NoOp()
 
 class Uploader:
 
-    def __init__(self, prefix="../awb-backend/examples"):
+    def __init__(self, prefix="/Users/julius/repos/awb-backend/examples"):
         self.path_prefix = prefix
 
     def upload_python_object(self, path_suffix, object, file_name):
@@ -96,7 +96,7 @@ def generic_wrapper(func, type: WrapperType, project: str="default", upload_args
     def wrapper(*args, **kwargs):
         name = project + f"/{type.value}"
         nonlocal count
-        print(f"{func} no op: {no_op.active}")
+        logging.debug(f"{func} no op: {no_op.active}")
         if count == 0 and not no_op.active:
             if not getattr(wrapper, f"_uploaded_env", False) and upload_env:
                 _upload_entire_env(func)
