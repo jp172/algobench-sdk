@@ -1,6 +1,8 @@
+import base64
 import pytest
 from unittest.mock import patch
 from algobench.decorator import APIClient
+import dill as pickle
 
 @pytest.fixture
 def mock_requests():
@@ -74,7 +76,7 @@ def test_upload_input_non_serializable(api_client, mock_requests):
     # Verify that pickle was used instead of to_json
     called_json = mock_requests.post.call_args.kwargs['json']
     assert 'content' in called_json
-    assert isinstance(called_json['content'], bytes)  # Pickled data
+    assert called_json['content'] == base64.b64encode(pickle.dumps(instance)).decode('utf-8')
 
 def test_upload_input_failed_request(api_client, mock_requests):
     instance = SampleClass()
@@ -108,7 +110,7 @@ def test_upload_result_non_serializable(api_client, mock_requests):
     # Verify pickle was used
     called_json = mock_requests.post.call_args.kwargs['json']
     assert 'content' in called_json
-    assert isinstance(called_json['content'], bytes)
+    assert called_json['content'] == base64.b64encode(pickle.dumps(result)).decode('utf-8')
 
 def test_upload_result_failed_request(api_client, mock_requests):
     result = SampleClass()

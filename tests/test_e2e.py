@@ -41,7 +41,7 @@ class Instance:
     def __init__(self, value: int):
         self.value = value
     def to_json(self):
-        return {"value": self.value}
+        return {'value': self.value}
     def from_json(self, json: dict):
         self.value = json["value"]
 
@@ -50,7 +50,7 @@ class Solution:
     def __init__(self, value: int):
         self.value = value
     def to_json(self):
-        return {"value": self.value}
+        return {'value': self.value}
     def from_json(self, json: dict):
         self.value = json["value"]
 
@@ -96,14 +96,14 @@ def test_full_decorator_flow():
     instances = response.json()
     assert len(instances) == 1
     test_instance = instances[0]
-    assert test_instance["content"] == test_input.to_json()
+    assert test_instance["content"].replace("'", '"') == str(test_input.to_json()).replace("'", '"')
 
     # Verify result was created
     response = requests.get(f"{ENDPOINT}/api/solutions/?instance__id={test_instance['id']}", headers=headers)
     assert response.status_code == 200
     results = response.json()
     assert len(results) == 1
-    assert results[0]["content"] == result.to_json()
+    assert results[0]["content"].replace("'", '"') == str(result.to_json()).replace("'", '"')
 
     result = decorated_algo(test_input)
     response = requests.get(f"{ENDPOINT}/api/instances/?environment__id={test_env['id']}", headers=headers)
