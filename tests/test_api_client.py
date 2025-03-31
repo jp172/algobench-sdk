@@ -55,6 +55,13 @@ def test_upload_input_multiple_args(api_client, mock_requests):
         assert str(e) == "Instance Upload failed. Algorithm must take exactly one argument"
     mock_requests.post.assert_not_called()
 
+def test_upload_input_no_args(api_client, mock_requests):
+    try:
+        instance_id = api_client.upload_instance((), {})
+    except Exception as e:
+        assert str(e) == "Instance Upload failed. Algorithm must take exactly one argument"
+    mock_requests.post.assert_not_called()
+
 def test_upload_input_non_serializable(api_client, mock_requests):
     instance = NonSerializableClass()
     mock_requests.post.return_value.status_code = 201
