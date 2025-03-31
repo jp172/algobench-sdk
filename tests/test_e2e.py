@@ -4,7 +4,7 @@ from algobench.decorator import algorithm
 import time
 
 ENDPOINT = "http://localhost:8000"
-API_KEY = "6ccffb6faf4c48169a2455247d37a00028f6bba2ee8131f4870105dcfd436dc93c2971e87baa3f87"
+API_KEY = "63ce7ccbb74332c5e0ed457550f5dde553ce57d4c9affca415384333fb8b18c1267295aed79818ec"
 headers = {"Authorization": f"ApiKey {API_KEY}"}
 
                 
@@ -18,11 +18,9 @@ def test_api_key_validation_invalid():
     assert response.status_code == 403
 
 
-
 def clear_test_environment():
     """Helper function to clean up test environment if it exists"""
-    response = requests.get(f"{ENDPOINT}/api/environments", 
-                          headers=headers)
+    response = requests.get(f"{ENDPOINT}/api/environments", headers=headers)
     if response.status_code == 200:
         for env in response.json():
             if env["name"] == "e2e_test_env":
@@ -57,13 +55,13 @@ class Solution:
         self.value = json["value"]
 
 def test_full_decorator_flow():
-    def test_algorithm(instance: Instance):
+    def test_algorithm(instance: Instance) -> Solution:
         return Solution(instance.value * 2)
 
-    def test_feasibility(instance: Instance, solution: Solution):
+    def test_feasibility(instance: Instance, solution: Solution) -> bool:
         return True
 
-    def test_scoring(instance: Instance, solution: Solution):
+    def test_scoring(instance: Instance, solution: Solution) -> float:
         return solution.value
 
     # Apply the decorator
@@ -93,7 +91,7 @@ def test_full_decorator_flow():
     assert result.value == 10
 
     # Verify instance was created
-    response = requests.get(f"{ENDPOINT}/api/instances?environment__id={test_env['id']}", headers=headers)
+    response = requests.get(f"{ENDPOINT}/api/instances/?environment__id={test_env['id']}", headers=headers)
     assert response.status_code == 200
     instances = response.json()
     assert len(instances) == 1
@@ -101,14 +99,14 @@ def test_full_decorator_flow():
     assert test_instance["content"] == test_input.to_json()
 
     # Verify result was created
-    response = requests.get(f"{ENDPOINT}/api/solutions?instance__id={test_instance['id']}", headers=headers)
+    response = requests.get(f"{ENDPOINT}/api/solutions/?instance__id={test_instance['id']}", headers=headers)
     assert response.status_code == 200
     results = response.json()
     assert len(results) == 1
     assert results[0]["content"] == result.to_json()
 
     result = decorated_algo(test_input)
-    response = requests.get(f"{ENDPOINT}/api/instances?environment__id={test_env['id']}", headers=headers)
+    response = requests.get(f"{ENDPOINT}/api/instances/?environment__id={test_env['id']}", headers=headers)
     assert response.status_code == 200
     instances = response.json()
     assert len(instances) == 2

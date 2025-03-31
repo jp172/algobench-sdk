@@ -4,8 +4,9 @@ import logging
 import dill as pickle
 from functools import wraps
 import sys
-
 import requests
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class APIClient:
@@ -41,6 +42,7 @@ class APIClient:
     def upload_instance(self, args, kwargs):
         instance = self.validate_input(args, kwargs)
 
+        # TODO. conversion to/from json as fallback
         try:
             instance_json = instance.to_json()
         except (AttributeError, Exception) as e:
@@ -52,7 +54,7 @@ class APIClient:
             headers=self.headers
         )
         if response.status_code != 201:
-            logging.warning(f"Instance Upload failed. {response.json()}")
+            logger.warning(f"Instance Upload failed. {response.json()}")
             return None
         return response.json()["id"]
         
@@ -63,13 +65,14 @@ class APIClient:
         except Exception as e:
             result_json = pickle.dumps(result)
         
+        # TODO. conversion to/from json as fallback
         response = requests.post(
             f"{self.algobench_url}/api/solutions/", 
             json={"content": result_json, "instance": instance_id},
             headers=self.headers
         )
         if response.status_code != 201:
-            logging.warning(f"Result Upload failed. {response.json()}")
+            logger.warning(f"Result Upload failed. {response.json()}")
         else:
             result_id = response.json()["id"]
             return result_id
@@ -101,7 +104,7 @@ class APIClient:
                 headers=self.headers
             )
             if response.status_code != 200:
-                logging.warning(f"Environment Upload failed. {response.json()}")
+                logger.warning(f"Environment Upload failed. {response.json()}")
         else:
             response = requests.post(
                 f"{self.algobench_url}/api/environments/", 
@@ -109,25 +112,73 @@ class APIClient:
                 headers=self.headers
             )
             if response.status_code != 201:
-                logging.warning(f"Environment Upload failed. {response.json()}")
-                logging.warning(f"Environment: {response.status_code}")
+                logger.warning(f"Environment Upload failed. {response.json()}")
+                logger.warning(f"Environment: {response.status_code}")
             else:
                 self.environment_id = response.json()["id"]
 
+def validate_functions(algorithm_function, feasibility_function, scoring_function):
+
+    hints = list(inspect.signature(algorithm_function).parameters.values())
+    if len(hints) != 1:
+        logger.warning("algorithm_function must take exactly one argument")
+        return False
+    potential_instance_type = hints[0].annotation
+    potential_solution_type = inspect.signature(algorithm_function).return_annotation
+    feasibility_hints = list(inspect.signature(feasibility_function).parameters.values())
+    if len(feasibility_hints) != 2:
+        logger.warning("feasibility_function must take exactly two arguments")
+        return False
+    if feasibility_hints[0].annotation != potential_instance_type:
+        logger.warning("feasibility_function must take the same instance type as algorithm_function")
+        return False
+    if feasibility_hints[1].annotation != potential_solution_type:
+        logger.warning("feasibility_function must take the same solution type as algorithm_function")
+        return False
+    if inspect.signature(feasibility_function).return_annotation is not bool:
+        logger.warning("feasibility_function must return a boolean")
+        return False
+    
+    scoring_hints = list(inspect.signature(scoring_function).parameters.values())
+    if len(scoring_hints) != 2:
+        logger.warning("scoring_function must take exactly two arguments")
+        return False
+    if scoring_hints[0].annotation != potential_instance_type:
+        logger.warning("scoring_function must take the same instance type as algorithm_function")
+        return False
+    if scoring_hints[1].annotation != potential_solution_type:
+        logger.warning("scoring_function must take the same solution type as algorithm_function")
+        return False
+    if inspect.signature(scoring_function).return_annotation is not float and inspect.signature(scoring_function).return_annotation is not int:
+        logger.warning("scoring_function must return a float or int")
+        return False
+
+    return True
+
+
+def validate(algorithm_function, name: str, feasibility_function: any, scoring_function: any, API_KEY: str) -> bool:
+    if len(name) == 0:
+        logger.warning("Environment name cannot be empty. Falling back to normal algorithm execution")
+        return False
+    
+    if not (inspect.getsourcefile(algorithm_function) == inspect.getsourcefile(feasibility_function) == inspect.getsourcefile(scoring_function)):
+        logger.warning("algorithm, feasibility, and scoring must be in the same file")
+        return False
+    
+    if not validate_functions(algorithm_function, feasibility_function, scoring_function):
+        return False
+    
+    return True
+
 def algorithm(algorithm_function, name: str, feasibility_function: any, scoring_function: any, API_KEY: str):
     
-    if len(name) == 0:
-        logging.warning("Environment name cannot be empty. Falling back to normal algorithm execution")
+    if not validate(algorithm_function, name, feasibility_function, scoring_function, API_KEY):
+        logger.warning("Falling back to normal algorithm execution")
         return algorithm_function
     
     api_client = APIClient(API_KEY, name)
     if not api_client.check_api_key():
-        logging.warning("API Key not valid. Falling back to normal algorithm execution")
-        return algorithm_function
-    
-    # algorithm, feasibility, scoring must be in the same file for now
-    if not (inspect.getsourcefile(algorithm_function) == inspect.getsourcefile(feasibility_function) == inspect.getsourcefile(scoring_function)):
-        logging.warning("algorithm, feasibility, and scoring must be in the same file")
+        logger.warning("API Key not valid. Falling back to normal algorithm execution")
         return algorithm_function
     
     api_client.upload_environment(algorithm_function, feasibility_function, scoring_function)
@@ -137,7 +188,7 @@ def algorithm(algorithm_function, name: str, feasibility_function: any, scoring_
         try:
             instance_id = api_client.upload_instance(args, kwargs)
         except Exception as e:
-            logging.warning(f"Uploading instance failed: {e}")
+            logger.warning(f"Uploading instance failed: {e}")
             return algorithm_function(*args, **kwargs)
         
         result = algorithm_function(*args, **kwargs)
@@ -145,7 +196,7 @@ def algorithm(algorithm_function, name: str, feasibility_function: any, scoring_
         try:
             api_client.upload_result(result, instance_id)
         except Exception as e:
-            logging.warning(f"Uploading result failed: {e}")
+            logger.warning(f"Uploading result failed: {e}")
         finally:
             return result
     
