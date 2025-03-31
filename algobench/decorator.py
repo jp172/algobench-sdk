@@ -1,5 +1,7 @@
+import base64
 from dataclasses import dataclass
 import inspect
+import json
 import logging
 import dill as pickle
 from functools import wraps
@@ -35,22 +37,31 @@ class APIClient:
         return None
 
     def validate_input(self, args, kwargs):
-        if len(args) != 1:
+        if len(args) + len(kwargs) != 1:
             raise Exception("Instance Upload failed. Algorithm must take exactly one argument")
-        return args[0]
+        if len(args) == 1:
+            return args[0]
+        if len(kwargs) == 1:
+            return list(kwargs.values())[0]
+        raise Exception("Instance Upload failed. Algorithm must take exactly one argument")
+    
+    def convert_to_file(self, object) -> tuple[str, str]:
+        if hasattr(object, "model_dump_json"):
+            return object.model_dump_json(), "json"
+        elif hasattr(object, "to_json"):
+            return json.dumps(object.to_json()), "json"
         
-    def upload_instance(self, args, kwargs):
+        logger.warning(f"No valid json or dict method found for {object}. Falling back to pickle.")
+        return base64.b64encode(pickle.dumps(object)).decode('utf-8'), "pickle"
+        
+    def upload_instance(self, args, kwargs) -> str | None:
         instance = self.validate_input(args, kwargs)
-
-        # TODO. conversion to/from json as fallback
-        try:
-            instance_json = instance.to_json()
-        except (AttributeError, Exception) as e:
-            instance_json = pickle.dumps(instance)
-
+        
+        instance_json, data_type = self.convert_to_file(instance)
+            
         response = requests.post(
             f"{self.algobench_url}/api/instances/", 
-            json={"content": instance_json, "environment": self.environment_id},
+            json={"content": instance_json, "environment": self.environment_id, "data_type": data_type},
             headers=self.headers
         )
         if response.status_code != 201:
@@ -59,27 +70,22 @@ class APIClient:
         return response.json()["id"]
         
 
-    def upload_result(self, result, instance_id):
-        try:
-            result_json = result.to_json()
-        except Exception as e:
-            result_json = pickle.dumps(result)
+    def upload_result(self, result, instance_id) -> str | None:
+        result_json, data_type = self.convert_to_file(result)
         
-        # TODO. conversion to/from json as fallback
         response = requests.post(
             f"{self.algobench_url}/api/solutions/", 
-            json={"content": result_json, "instance": instance_id},
+            json={"content": result_json, "instance": instance_id, "data_type": data_type},
             headers=self.headers
         )
         if response.status_code != 201:
             logger.warning(f"Result Upload failed. {response.json()}")
-        else:
-            result_id = response.json()["id"]
-            return result_id
+            return None
+        
+        return response.json()["id"]
 
     def upload_environment(self, algorithm_function, feasibility, scoring):
 
-        # TODO: Instance and Solution validation, ideally already during env upload.
         python_version = sys.version_info
         source_code = inspect.getsource(algorithm_function)
 
