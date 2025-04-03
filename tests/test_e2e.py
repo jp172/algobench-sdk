@@ -70,7 +70,8 @@ def test_full_decorator_flow():
         name="e2e_test_env",
         feasibility_function=test_feasibility,
         scoring_function=test_scoring,
-        API_KEY=API_KEY
+        API_KEY=API_KEY,
+        is_minimization=True
     )
 
     # Give the server a moment to process the environment creation
