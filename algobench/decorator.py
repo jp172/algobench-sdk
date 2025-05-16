@@ -1,5 +1,6 @@
 import logging
 from functools import wraps
+import time
 
 from .file_handling import convert_from_string
 from .validation import validate, validate_input
@@ -8,7 +9,7 @@ from .api_client import APIClient
 logger = logging.getLogger(__name__)
 
 
-def algorithm(algorithm_function, name: str, feasibility_function: any, scoring_function: any, API_KEY: str, is_minimization: bool, improve_solution: bool = False):
+def algorithm(algorithm_function, name: str, feasibility_function: any, scoring_function: any, API_KEY: str, is_minimization: bool, improve_solution: bool = False, additional_wait_seconds: int = 0):
     
     if not validate(algorithm_function, name, feasibility_function, scoring_function, API_KEY):
         logger.warning("Falling back to normal algorithm execution")
@@ -19,15 +20,15 @@ def algorithm(algorithm_function, name: str, feasibility_function: any, scoring_
         logger.warning("API Key not valid. Falling back to normal algorithm execution")
         return algorithm_function
     
-    api_client.upload_environment(algorithm_function, feasibility_function, scoring_function, is_minimization)
+    api_client.upload_environment(algorithm_function, feasibility_function, scoring_function, is_minimization, improve_solution)
 
     def improve(instance, instance_id, solution):
 
-        solution_string = api_client.pull_solution(instance_id)
-        if solution_string is None:
+        solution_tuple = api_client.pull_solution(instance_id)
+        if solution_tuple is None:
             return solution
         try:
-            server_solution = convert_from_string(solution_string[0], solution_string[1], type(solution))
+            server_solution = convert_from_string(solution_tuple[0], solution_tuple[1], type(solution))
         except Exception as e:
             logger.warning(f"Improving solution failed: {e}")
             return solution
@@ -57,12 +58,14 @@ def algorithm(algorithm_function, name: str, feasibility_function: any, scoring_
         
         solution = algorithm_function(*args, **kwargs)
         
+        
         try:
             api_client.upload_solution(solution, instance_id)
         except Exception as e:
             logger.warning(f"Uploading solution failed: {e}")
         
         if improve_solution:
+            time.sleep(additional_wait_seconds)
             try:
                 return improve(instance, instance_id, solution)
             except Exception as e:

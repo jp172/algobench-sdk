@@ -60,7 +60,7 @@ def test_upload_input_non_serializable(api_client, mock_requests):
     assert instance_id == "test_id"
     mock_requests.post.assert_called_once()
     # Verify that pickle was used instead of to_json
-    called_json = mock_requests.post.call_args.kwargs['json']
+    called_json = mock_requests.post.call_args.kwargs['data']
     assert 'content' in called_json
     assert called_json['content'] == base64.b64encode(pickle.dumps(instance)).decode('utf-8')
 
@@ -94,7 +94,7 @@ def test_upload_solution_non_serializable(api_client, mock_requests):
     assert result_id == "result_id"
     mock_requests.post.assert_called_once()
     # Verify pickle was used 
-    called_json = mock_requests.post.call_args.kwargs['json']
+    called_json = mock_requests.post.call_args.kwargs['data']
     assert 'content' in called_json
     assert called_json['content'] == base64.b64encode(pickle.dumps(result)).decode('utf-8')
 
@@ -116,7 +116,7 @@ def test_upload_environment(api_client, mock_requests):
     # mock get environment
     mock_requests.get.return_value.status_code = 200
     mock_requests.get.return_value.json.return_value = []
-    api_client.upload_environment(test_algo, test_feasibility, test_scoring, True)
+    api_client.upload_environment(test_algo, test_feasibility, test_scoring, True, True)
 
     mock_requests.post.assert_called_once()
     called_json = mock_requests.post.call_args.kwargs['json']
@@ -136,7 +136,7 @@ def test_update_environment(api_client, mock_requests):
     mock_requests.get.return_value.status_code = 200
     mock_requests.get.return_value.json.return_value = [{"id": "test_id", "name": "test_env"}]
     api_client.environment_id = "test_id"
-    api_client.upload_environment(test_algo, test_feasibility, test_scoring, True)
+    api_client.upload_environment(test_algo, test_feasibility, test_scoring, True, True)
     mock_requests.put.assert_called_once()
     called_json = mock_requests.put.call_args.kwargs['json']
     assert 'python_version' in called_json
@@ -157,8 +157,10 @@ def test_login(api_client, mock_requests):
 
 def test_pull_solution(api_client, mock_requests):
     mock_requests.get.return_value.status_code = 200
-    mock_requests.get.return_value.json.return_value = [
-        {"id": "test_id", "content": "test_content", "data_type": "test_data_type"}
-    ]
+    mock_requests.get.return_value.json.return_value = {
+        "id": "test_id", 
+        "content": "test_content", 
+        "data_type": "test_data_type"
+    }
     solution = api_client.pull_solution("test_instance_id")
     assert solution == ("test_content", "test_data_type")
