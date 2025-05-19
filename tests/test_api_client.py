@@ -1,8 +1,7 @@
-import base64
 import pytest
+import json
 from unittest.mock import patch
 from algobench.api_client import APIClient
-import dill as pickle
 
 @pytest.fixture
 def mock_requests():
@@ -17,8 +16,16 @@ def api_client(mock_requests):
         return client
 
 class SampleClass:
+
+    def __init__(self, data: str = "test"):
+        self.data = data
+
     def to_json(self):
-        return '{"data": "test"}'
+        return {"data": self.data}
+    
+    @classmethod
+    def from_json(cls, json_string):
+        return cls(json.loads(json_string)["data"])
 
 class NonSerializableClass:
     def __init__(self):
@@ -50,20 +57,6 @@ def test_upload_input_single_arg(api_client, mock_requests):
     assert instance_id == "test_id"
     mock_requests.post.assert_called_once()
 
-def test_upload_input_non_serializable(api_client, mock_requests):
-    instance = NonSerializableClass()
-    mock_requests.post.return_value.status_code = 201
-    mock_requests.post.return_value.json.return_value = {"id": "test_id"}
-
-    instance_id = api_client.upload_instance(instance)
-    
-    assert instance_id == "test_id"
-    mock_requests.post.assert_called_once()
-    # Verify that pickle was used instead of to_json
-    called_json = mock_requests.post.call_args.kwargs['data']
-    assert 'content' in called_json
-    assert called_json['content'] == base64.b64encode(pickle.dumps(instance)).decode('utf-8')
-
 def test_upload_input_failed_request(api_client, mock_requests):
     instance = SampleClass()
     mock_requests.post.return_value.status_code = 400
@@ -83,20 +76,6 @@ def test_upload_solution_success(api_client, mock_requests):
     
     assert result_id == "result_id"
     mock_requests.post.assert_called_once()
-
-def test_upload_solution_non_serializable(api_client, mock_requests):
-    result = NonSerializableClass()
-    mock_requests.post.return_value.status_code = 201
-    mock_requests.post.return_value.json.return_value = {"id": "result_id"}
-
-    result_id = api_client.upload_solution(result, "test_instance_id")
-    
-    assert result_id == "result_id"
-    mock_requests.post.assert_called_once()
-    # Verify pickle was used 
-    called_json = mock_requests.post.call_args.kwargs['data']
-    assert 'content' in called_json
-    assert called_json['content'] == base64.b64encode(pickle.dumps(result)).decode('utf-8')
 
 def test_upload_solution_failed_request(api_client, mock_requests):
     result = SampleClass()
@@ -159,8 +138,7 @@ def test_pull_solution(api_client, mock_requests):
     mock_requests.get.return_value.status_code = 200
     mock_requests.get.return_value.json.return_value = {
         "id": "test_id", 
-        "content": "test_content", 
-        "data_type": "test_data_type"
+        "content": {"data": "pull_solution_test_content"}, 
     }
-    solution = api_client.pull_solution("test_instance_id")
-    assert solution == ("test_content", "test_data_type")
+    solution = api_client.pull_solution("test_instance_id", SampleClass)
+    assert solution.data == "pull_solution_test_content"

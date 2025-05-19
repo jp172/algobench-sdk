@@ -1,5 +1,4 @@
 from algobench.decorator import algorithm
-from algobench.validation import validate_functions
 from unittest.mock import Mock, patch
 
 def sample_algorithm(x: int) -> int:

@@ -4,8 +4,7 @@ import inspect
 from dataclasses import dataclass
 import logging
 
-from .validation import validate_input
-from .file_handling import convert_to_string
+from .file_handling import convert_to_json, convert_from_json
 
 
 logger = logging.getLogger(__name__)
@@ -33,12 +32,9 @@ class APIClient:
         
         
     def upload_instance(self, instance) -> str | None:
-        
-        instance_string, data_type = convert_to_string(instance)
-            
         response = requests.post(
             f"{self.algobench_url}/api/instances/", 
-            data={"content": instance_string, "environment": self.environment_id, "data_type": data_type},
+            data={"content": convert_to_json(instance), "environment": self.environment_id},
             headers=self.headers
         )
         
@@ -49,11 +45,9 @@ class APIClient:
         
 
     def upload_solution(self, solution, instance_id: str) -> str | None:
-        solution_string, data_type = convert_to_string(solution)
-        
         response = requests.post(
             f"{self.algobench_url}/api/solutions/", 
-            data={"content": solution_string, "instance": instance_id, "data_type": data_type},
+            data={"content": convert_to_json(solution), "instance": instance_id},
             headers=self.headers
         )
         
@@ -106,7 +100,7 @@ class APIClient:
                 self.environment_id = response.json()["id"]
                 logger.info(f"Environment uploaded successfully. {self.environment_id}")
     
-    def pull_solution(self, instance_id: str) -> tuple[str, str] | None:
+    def pull_solution(self, instance_id: str, solution_type: type) -> object | None:
         response = requests.get(
             f"{self.algobench_url}/api/instances/{instance_id}/best_solution/",
             headers=self.headers
@@ -122,8 +116,8 @@ class APIClient:
             logger.warning(f"No solution found for instance {instance_id}")
             return None
         
-        if "content" not in data or "data_type" not in data:
+        if "content" not in data:
             logger.warning(f"Solution Pull failed. Data: {data}")
             return None
         
-        return data["content"], data["data_type"]
+        return convert_from_json(data["content"], solution_type)
