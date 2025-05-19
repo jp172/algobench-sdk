@@ -1,6 +1,5 @@
 import json
 
-
 class Instance:
     value: int
     def __init__(self, value: int):

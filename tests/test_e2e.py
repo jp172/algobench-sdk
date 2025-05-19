@@ -1,12 +1,16 @@
+import os
 import pytest
 import requests
 from algobench.decorator import algorithm
 import time
+import dotenv
+
+dotenv.load_dotenv()
 
 from tests.e2e_env import Instance, my_algorithm, my_feasibility, my_scoring
 
-ENDPOINT = "http://localhost:8000"
-API_KEY = "63ce7ccbb74332c5e0ed457550f5dde553ce57d4c9affca415384333fb8b18c1267295aed79818ec"
+ENDPOINT = os.getenv("ENDPOINT")
+API_KEY = os.getenv("API_KEY")
 headers = {"Authorization": f"ApiKey {API_KEY}"}
 
                 

@@ -2,7 +2,6 @@ import logging
 from functools import wraps
 import time
 
-from .file_handling import convert_from_string
 from .validation import validate, validate_input
 from .api_client import APIClient
 
@@ -24,12 +23,8 @@ def algorithm(algorithm_function, name: str, feasibility_function: any, scoring_
 
     def improve(instance, instance_id, solution):
 
-        solution_tuple = api_client.pull_solution(instance_id)
-        if solution_tuple is None:
-            return solution
-        try:
-            server_solution = convert_from_string(solution_tuple[0], solution_tuple[1], type(solution))
-        except Exception as e:
+        server_solution = api_client.pull_solution(instance_id, type(solution))
+        if server_solution is None:
             logger.warning(f"Improving solution failed: {e}")
             return solution
         try:
