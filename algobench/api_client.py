@@ -1,3 +1,4 @@
+import subprocess
 import requests
 import sys
 import inspect
@@ -59,7 +60,9 @@ class APIClient:
 
     def upload_environment(self, algorithm_function, feasibility, scoring, is_minimization: bool, improve_solution: bool):
 
-        python_version = sys.version_info
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        requirements = subprocess.check_output(["pip", "freeze"]).decode("utf-8")
+
         file_path = inspect.getfile(algorithm_function)
         with open(file_path, 'r') as f:
             source_code = f.read()
@@ -70,6 +73,7 @@ class APIClient:
 
         json_data = {
             "python_version": python_version,
+            "requirements": requirements,
             "code": source_code,
             "algorithm_function_name": algorithm_name,
             "feasibility_function_name": feasibility_name,
