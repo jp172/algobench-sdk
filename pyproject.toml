@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "algoworkbench"
+name = "algobench"
 version = "0.1.0"
 description = "Supercharging your algorithm development"
 authors = ["Julius"]
