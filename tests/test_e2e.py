@@ -44,13 +44,12 @@ def test_full_decorator_flow():
 
     # Apply the decorator
     decorated_algo = algorithm(
-        my_algorithm,
         name="e2e_test_env",
         feasibility_function=my_feasibility,
         scoring_function=my_scoring,
         API_KEY=API_KEY,
         is_minimization=True
-    )
+    )(my_algorithm)
 
     # Give the server a moment to process the environment creation
     time.sleep(1)
@@ -94,7 +93,6 @@ def test_full_decorator_flow():
 def test_full_decorator_flow_with_solution_pull():
     # Apply the decorator
     decorated_algo = algorithm(
-        my_algorithm,
         name="e2e_test_env_with_solution_pull",
         feasibility_function=my_feasibility,
         scoring_function=my_scoring,
@@ -102,7 +100,7 @@ def test_full_decorator_flow_with_solution_pull():
         is_minimization=False,
         improve_solution=True,
         additional_wait_seconds=30
-    )
+    )(my_algorithm)
 
     time.sleep(1)
 

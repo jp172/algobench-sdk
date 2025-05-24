@@ -19,13 +19,12 @@ def test_decorator_with_sample_functions():
         MockAPIClient.return_value = mock_client
 
         wrapped = algorithm(
-            sample_algorithm,
             name="test_algo",
             feasibility_function=sample_feasibility,
             scoring_function=sample_scoring,
             API_KEY="valid_key",
             is_minimization=True
-        )
+        )(sample_algorithm)
         
         assert wrapped(5) == 10
 
@@ -36,13 +35,12 @@ def test_decorator_invalid_api_key():
         MockAPIClient.return_value = mock_client
 
         wrapped = algorithm(
-            sample_algorithm,
             name="test_algo",
             feasibility_function=sample_feasibility,
             scoring_function=sample_scoring,
             API_KEY="invalid_key",
             is_minimization=True
-        )
+        )(sample_algorithm)
         
         assert wrapped == sample_algorithm
 
@@ -53,13 +51,12 @@ def test_decorator_empty_name():
         MockAPIClient.return_value = mock_client
 
         wrapped = algorithm(
-            sample_algorithm,
             name="",
             feasibility_function=sample_feasibility,
             scoring_function=sample_scoring,
             API_KEY="valid_key",
             is_minimization=True
-        )
+        )(sample_algorithm)
         assert wrapped == sample_algorithm
 
 def test_decorator_upload_failures():
@@ -70,13 +67,12 @@ def test_decorator_upload_failures():
         MockAPIClient.return_value = mock_client
 
         wrapped = algorithm(
-            sample_algorithm,
             name="test_algo",
             feasibility_function=sample_feasibility,
             scoring_function=sample_scoring,
             API_KEY="valid_key",
             is_minimization=True
-        )
+        )(sample_algorithm)
         
         assert wrapped(5) == 10
         assert wrapped != sample_algorithm
@@ -91,13 +87,12 @@ def test_decorator_persistence():
         MockAPIClient.return_value = mock_client
 
         wrapped = algorithm(
-            sample_algorithm,
             name="test_algo",
             feasibility_function=sample_feasibility,
             scoring_function=sample_scoring,
             API_KEY="valid_key",
             is_minimization=True
-        )
+        )(sample_algorithm)
         
         assert wrapped(5) == 10
         assert wrapped(10) == 20
@@ -113,13 +108,12 @@ def test_decorator_happy_path():
         MockAPIClient.return_value = mock_client
         
         wrapped = algorithm(
-            sample_algorithm,
             name="test_algo",
             feasibility_function=sample_feasibility,
             scoring_function=sample_scoring,
             API_KEY="valid_key",
             is_minimization=True
-        )
+        )(sample_algorithm)
         
         assert wrapped(5) == 10
         
