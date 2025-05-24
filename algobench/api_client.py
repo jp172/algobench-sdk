@@ -61,7 +61,7 @@ class APIClient:
     def upload_environment(self, algorithm_function, feasibility, scoring, is_minimization: bool, improve_solution: bool):
 
         python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-        requirements = subprocess.check_output(["pip", "freeze"]).decode("utf-8")
+        requirements = subprocess.check_output(["python", "-m", "pip", "freeze"]).decode("utf-8")
 
         file_path = inspect.getfile(algorithm_function)
         with open(file_path, 'r') as f:
