@@ -26,7 +26,6 @@ def algorithm(name: str, feasibility_function: any, scoring_function: any, API_K
 
             server_solution = api_client.pull_solution(instance_id, type(solution))
             if server_solution is None:
-                logger.warning(f"Improving solution failed: {e}")
                 return solution
             try:
                 if feasibility_function(instance, server_solution):

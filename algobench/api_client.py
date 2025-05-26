@@ -29,6 +29,8 @@ class APIClient:
         
         if len(response.json()) > 0:
             self.environment_id = response.json()[0]["id"]
+        
+        logger.info(f"Login successful.")
         return True
         
         
@@ -80,7 +82,7 @@ class APIClient:
             "score_function_name": scoring_name,
             "is_minimization": is_minimization,
             "name": self.env_name,
-            "active": improve_solution
+            "run_algos": improve_solution
         }
 
         if self.environment_id is not None:
