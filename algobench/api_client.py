@@ -102,7 +102,7 @@ class APIClient:
                 logger.warning(f"Environment: {response.status_code}")
             else:
                 self.environment_id = response.json()["id"]
-                logger.info(f"Environment uploaded successfully. {self.environment_id}")
+                logger.info(f"Environment uploaded successfully.")
     
     def pull_solution(self, instance_id: str, solution_type: type) -> object | None:
         response = requests.get(
