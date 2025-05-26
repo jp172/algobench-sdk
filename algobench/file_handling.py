@@ -18,7 +18,10 @@ def convert_to_json(object) -> str:
 
 def convert_from_json(data, class_type: type) -> object:
     if hasattr(class_type, "model_validate_json"):
-        return class_type.model_validate_json(data)
+        if isinstance(data, str):
+            return class_type.model_validate_json(data)
+        else:
+            return class_type.model_validate(data)
     elif hasattr(class_type, "from_json"):
         if isinstance(data, str):
             return class_type.from_json(data)
