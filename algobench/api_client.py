@@ -27,7 +27,7 @@ class APIClient:
             response = requests.get(f"{self.algobench_url}/api/environments?name={self.env_name}", headers=self.headers)
             if response.status_code != 200:
                 return False
-        except ConnectionError:
+        except requests.exceptions.ConnectionError:
             logger.warning(f"Login failed. Could not connect to the server.")
             return False
         

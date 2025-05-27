@@ -146,5 +146,5 @@ def test_pull_solution(api_client, mock_requests):
     assert solution.data == "pull_solution_test_content"
 
 def test_no_connection(api_client, mock_requests):
-    mock_requests.get.side_effect = ConnectionError
+    mock_requests.get.side_effect = requests.exceptions.ConnectionError
     assert api_client.login() is False
