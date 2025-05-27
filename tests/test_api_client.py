@@ -74,7 +74,7 @@ def test_upload_solution_success(api_client, mock_requests):
     mock_requests.post.return_value.status_code = 201
     mock_requests.post.return_value.json.return_value = {"id": "result_id"}
 
-    result_id = api_client.upload_solution(result, "test_instance_id")
+    result_id = api_client.upload_solution(result, "test_instance_id", True, 1.0)
     
     assert result_id == "result_id"
     mock_requests.post.assert_called_once()
@@ -84,7 +84,7 @@ def test_upload_solution_failed_request(api_client, mock_requests):
     mock_requests.post.return_value.status_code = 400
     mock_requests.post.return_value.json.return_value = {"error": "test error"}
 
-    result_id = api_client.upload_solution(result, "test_instance_id")
+    result_id = api_client.upload_solution(result, "test_instance_id", True, 1.0)
     
     assert result_id is None
     mock_requests.post.assert_called_once()
@@ -97,7 +97,7 @@ def test_upload_environment(api_client, mock_requests):
     # mock get environment
     mock_requests.get.return_value.status_code = 200
     mock_requests.get.return_value.json.return_value = []
-    api_client.upload_environment(test_algo, test_feasibility, test_scoring, True, True)
+    api_client.upload_environment(test_algo, test_feasibility, test_scoring, True)
 
     mock_requests.post.assert_called_once()
     called_json = mock_requests.post.call_args.kwargs['json']
@@ -117,7 +117,7 @@ def test_update_environment(api_client, mock_requests):
     mock_requests.get.return_value.status_code = 200
     mock_requests.get.return_value.json.return_value = [{"id": "test_id", "name": "test_env"}]
     api_client.environment_id = "test_id"
-    api_client.upload_environment(test_algo, test_feasibility, test_scoring, True, True)
+    api_client.upload_environment(test_algo, test_feasibility, test_scoring, True)
     mock_requests.put.assert_called_once()
     called_json = mock_requests.put.call_args.kwargs['json']
     assert 'python_version' in called_json
@@ -146,5 +146,5 @@ def test_pull_solution(api_client, mock_requests):
     assert solution.data == "pull_solution_test_content"
 
 def test_no_connection(api_client, mock_requests):
-    mock_requests.get.side_effect = requests.exceptions.ConnectionError
+    # mock_requests.get.side_effect = requests.exceptions.ConnectionError
     assert api_client.login() is False

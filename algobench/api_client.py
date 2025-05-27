@@ -52,10 +52,10 @@ class APIClient:
         return response.json()["id"]
         
 
-    def upload_solution(self, solution, instance_id: str) -> str | None:
+    def upload_solution(self, solution, instance_id: str, feasible: bool, score: float) -> str | None:
         response = requests.post(
             f"{self.algobench_url}/api/solutions/", 
-            data={"content": convert_to_json(solution), "instance": instance_id},
+            data={"content": convert_to_json(solution), "instance": instance_id, "feasible": feasible, "score": score},
             headers=self.headers
         )
         
@@ -65,7 +65,7 @@ class APIClient:
         
         return response.json()["id"]
 
-    def upload_environment(self, algorithm_function, feasibility, scoring, is_minimization: bool, improve_solution: bool):
+    def upload_environment(self, algorithm_function, feasibility, scoring, is_minimization: bool):
 
         python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
         requirements = subprocess.check_output(["python", "-m", "pip", "freeze"]).decode("utf-8")
@@ -86,8 +86,7 @@ class APIClient:
             "feasibility_function_name": feasibility_name,
             "score_function_name": scoring_name,
             "is_minimization": is_minimization,
-            "name": self.env_name,
-            "run_algos": improve_solution
+            "name": self.env_name
         }
 
         if self.environment_id is not None:

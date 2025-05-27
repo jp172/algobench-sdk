@@ -8,7 +8,7 @@ from .api_client import APIClient
 logger = logging.getLogger(__name__)
 
 
-def algorithm(name: str, feasibility_function: any, scoring_function: any, API_KEY: str, is_minimization: bool, improve_solution: bool = False, additional_wait_seconds: int = 0):
+def algorithm(name: str, feasibility_function: any, scoring_function: any, API_KEY: str, is_minimization: bool, additional_wait_seconds: int = 0):
     
     def create_decorator(algorithm_function):
         if not validate(algorithm_function, name, feasibility_function, scoring_function, API_KEY):
@@ -20,21 +20,17 @@ def algorithm(name: str, feasibility_function: any, scoring_function: any, API_K
             logger.warning("Falling back to normal algorithm execution")
             return algorithm_function
         
-        api_client.upload_environment(algorithm_function, feasibility_function, scoring_function, is_minimization, improve_solution)
+        api_client.upload_environment(algorithm_function, feasibility_function, scoring_function, is_minimization)
 
-        def improve(instance, instance_id, solution):
+        def improve(instance, instance_id, solution, old_solution_feasible, old_score):
 
             server_solution = api_client.pull_solution(instance_id, type(solution))
             if server_solution is None:
                 return solution
             try:
                 if feasibility_function(instance, server_solution):
-                    old_score = scoring_function(instance, solution)
                     new_score = scoring_function(instance, server_solution)
-                    if is_minimization and old_score > new_score:
-                        logger.info(f"Improved solution found. New score: {new_score}. Old score: {old_score}")
-                        return server_solution
-                    elif not is_minimization and old_score < new_score:
+                    if (is_minimization and old_score > new_score) or (not is_minimization and old_score < new_score) or not old_solution_feasible:
                         logger.info(f"Improved solution found. New score: {new_score}. Old score: {old_score}")
                         return server_solution
                     else:
@@ -57,16 +53,17 @@ def algorithm(name: str, feasibility_function: any, scoring_function: any, API_K
             
             
             try:
-                api_client.upload_solution(solution, instance_id)
+                feasible = feasibility_function(instance, solution)
+                score = scoring_function(instance, solution)
+                api_client.upload_solution(solution, instance_id, feasible, score)
             except Exception as e:
                 logger.warning(f"Uploading solution failed: {e}")
             
-            if improve_solution:
-                time.sleep(additional_wait_seconds)
-                try:
-                    return improve(instance, instance_id, solution)
-                except Exception as e:
-                    logger.warning(f"Improving solution failed: {e}")
+            time.sleep(additional_wait_seconds)
+            try:
+                return improve(instance, instance_id, solution, feasible, score)
+            except Exception as e:
+                logger.warning(f"Improving solution failed: {e}")
 
             return solution
         
