@@ -98,7 +98,6 @@ def test_full_decorator_flow_with_solution_pull():
         scoring_function=my_scoring,
         API_KEY=API_KEY,
         is_minimization=False,
-        improve_solution=True,
         additional_wait_seconds=30
     )(my_algorithm)
 
