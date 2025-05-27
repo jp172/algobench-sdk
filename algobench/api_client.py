@@ -23,8 +23,12 @@ class APIClient:
     def login(self) -> bool:
         if not self.api_key:
             return False
-        response = requests.get(f"{self.algobench_url}/api/environments?name={self.env_name}", headers=self.headers)
-        if response.status_code != 200:
+        try:
+            response = requests.get(f"{self.algobench_url}/api/environments?name={self.env_name}", headers=self.headers)
+            if response.status_code != 200:
+                return False
+        except ConnectionError:
+            logger.warning(f"Login failed. Could not connect to the server.")
             return False
         
         if len(response.json()) > 0:
