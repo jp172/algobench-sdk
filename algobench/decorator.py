@@ -17,7 +17,7 @@ def algorithm(name: str, feasibility_function: any, scoring_function: any, API_K
         
         api_client = APIClient(API_KEY, name)
         if not api_client.login():
-            logger.warning("API Key not valid. Falling back to normal algorithm execution")
+            logger.warning("Falling back to normal algorithm execution")
             return algorithm_function
         
         api_client.upload_environment(algorithm_function, feasibility_function, scoring_function, is_minimization, improve_solution)
@@ -32,8 +32,10 @@ def algorithm(name: str, feasibility_function: any, scoring_function: any, API_K
                     old_score = scoring_function(instance, solution)
                     new_score = scoring_function(instance, server_solution)
                     if is_minimization and old_score > new_score:
+                        logger.info(f"Improved solution found. New score: {new_score}. Old score: {old_score}")
                         return server_solution
                     elif not is_minimization and old_score < new_score:
+                        logger.info(f"Improved solution found. New score: {new_score}. Old score: {old_score}")
                         return server_solution
                     else:
                         return solution

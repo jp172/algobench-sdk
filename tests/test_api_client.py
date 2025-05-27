@@ -1,6 +1,8 @@
 import pytest
 import json
 from unittest.mock import patch
+
+import requests
 from algobench.api_client import APIClient
 
 @pytest.fixture
@@ -142,3 +144,7 @@ def test_pull_solution(api_client, mock_requests):
     }
     solution = api_client.pull_solution("test_instance_id", SampleClass)
     assert solution.data == "pull_solution_test_content"
+
+def test_no_connection(api_client, mock_requests):
+    mock_requests.get.side_effect = requests.exceptions.ConnectionError
+    assert api_client.login() is False
