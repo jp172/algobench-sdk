@@ -4,14 +4,22 @@ version = "0.1.0"
 description = "Supercharging your algorithm development"
 authors = ["Julius"]
 readme = "README.md"
+packages = [{include = "algobench"}]
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = "^3.10"
 pytest = "^8.3.4"
 requests = "^2.32.3"
 pydantic = "^2.11.1"
 python-dotenv = "^1.1.0"
 
+[tool.poetry.group.dev.dependencies]
+black = "^24.2.0"
+flake8 = "^7.1.1"
+pre-commit = "^4.2.0"
+
+[tool.black]
+line-length = 120
 
 [build-system]
 requires = ["poetry-core"]
