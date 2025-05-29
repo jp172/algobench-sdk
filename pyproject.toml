@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Supercharging your algorithm development"
 authors = ["Julius"]
 readme = "README.md"
+packages = [{include = "algobench"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -15,6 +16,7 @@ python-dotenv = "^1.1.0"
 [tool.poetry.group.dev.dependencies]
 black = "^24.2.0"
 flake8 = "^7.1.1"
+pre-commit = "^4.2.0"
 
 [tool.black]
 line-length = 120
