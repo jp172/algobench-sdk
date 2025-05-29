@@ -22,7 +22,6 @@ class APIClient:
         self.headers = {"Authorization": f"ApiKey {self.api_key}"}
 
     def login(self) -> bool:
-        logger.info(f"Logging in to {self.algobench_url} with API key {self.api_key}")
         if not self.api_key:
             return False
         try:
@@ -109,14 +108,17 @@ class APIClient:
             f"{self.algobench_url}/api/instances/{instance_id}/best_solution/", headers=self.headers
         )
 
-        if response.status_code != 200:
+        if response.status_code == 404:
+            logger.info(f"No solution found for instance {instance_id}")
+            return None
+        elif response.status_code != 200:
             logger.warning(f"Solution Pull failed. Status code: {response.status_code}. {response.json()}")
             return None
 
         data = response.json()
 
         if len(data) == 0:
-            logger.warning(f"No solution found for instance {instance_id}")
+            logger.info(f"No solution found for instance {instance_id}")
             return None
 
         if "content" not in data:
