@@ -4,6 +4,7 @@ from json.decoder import JSONDecodeError
 
 logger = logging.getLogger(__name__)
 
+
 def convert_to_json(object) -> str:
     if hasattr(object, "model_dump_json"):
         return object.model_dump_json()
@@ -15,6 +16,7 @@ def convert_to_json(object) -> str:
         except JSONDecodeError as e:
             logger.warning(f"No valid json or dict method found for {object}.")
             raise e
+
 
 def convert_from_json(data, class_type: type) -> object:
     if hasattr(class_type, "model_validate_json"):
