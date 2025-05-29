@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "algobench"
 version = "0.1.0"
-description = "Supercharging your algorithm development"
+description = "Supercharge your algorithm development"
 authors = ["Julius"]
 readme = "README.md"
 packages = [{include = "algobench"}]
