@@ -100,7 +100,7 @@ def test_upload_solution_failed_request(api_client, mock_requests):
     mock_requests.post.assert_called_once()
 
 
-def test_upload_environment(api_client, mock_requests):
+def test_upload_problem(api_client, mock_requests):
     def test_algo(x):
         return x
 
@@ -110,10 +110,9 @@ def test_upload_environment(api_client, mock_requests):
     def test_scoring(x):
         return x
 
-    # mock get environment
     mock_requests.get.return_value.status_code = 200
     mock_requests.get.return_value.json.return_value = []
-    api_client.upload_environment(test_algo, test_feasibility, test_scoring, True)
+    api_client.upload_problem(test_algo, test_feasibility, test_scoring, True)
 
     mock_requests.post.assert_called_once()
     called_json = mock_requests.post.call_args.kwargs["json"]
@@ -125,7 +124,7 @@ def test_upload_environment(api_client, mock_requests):
     assert "name" in called_json
 
 
-def test_update_environment(api_client, mock_requests):
+def test_update_problem(api_client, mock_requests):
     def test_algo(x):
         return x
 
@@ -137,8 +136,8 @@ def test_update_environment(api_client, mock_requests):
 
     mock_requests.get.return_value.status_code = 200
     mock_requests.get.return_value.json.return_value = [{"id": "test_id", "name": "test_env"}]
-    api_client.environment_id = "test_id"
-    api_client.upload_environment(test_algo, test_feasibility, test_scoring, True)
+    api_client.problem_id = "test_id"
+    api_client.upload_problem(test_algo, test_feasibility, test_scoring, True)
     mock_requests.put.assert_called_once()
     called_json = mock_requests.put.call_args.kwargs["json"]
     assert "python_version" in called_json
@@ -156,7 +155,7 @@ def test_login(api_client, mock_requests):
         {"name": "other_env", "id": "456"},
     ]
     assert api_client.login()
-    assert api_client.environment_id == "123"
+    assert api_client.problem_id == "123"
 
 
 def test_pull_solution(api_client, mock_requests):

@@ -19,7 +19,7 @@ headers = {"Authorization": f"ApiKey {API_KEY}"}
 
 def test_api_key_validation():
     try:
-        response = requests.get(f"{ENDPOINT}/api/environments", headers=headers)
+        response = requests.get(f"{ENDPOINT}/api/problems", headers=headers)
         assert response.status_code == 200
     except requests.exceptions.ConnectionError:
         assert False, "Connection error when validating API key"
@@ -27,30 +27,30 @@ def test_api_key_validation():
 
 def test_api_key_validation_invalid():
     try:
-        response = requests.get(f"{ENDPOINT}/api/environments", headers={"Authorization": "ApiKey invalid_key"})
+        response = requests.get(f"{ENDPOINT}/api/problems", headers={"Authorization": "ApiKey invalid_key"})
         assert response.status_code == 403
     except requests.exceptions.ConnectionError:
         assert False, "Connection error when validating invalid API key"
 
 
-def clear_test_environment():
+def clear_test_problem():
     try:
-        response = requests.get(f"{ENDPOINT}/api/environments", headers=headers)
+        response = requests.get(f"{ENDPOINT}/api/problems", headers=headers)
         if response.status_code == 200:
             for env in response.json():
                 if env["name"] in ["e2e_test_env", "e2e_test_env_with_solution_pull"]:
-                    requests.delete(f"{ENDPOINT}/api/environments/{env['id']}/", headers=headers)
+                    requests.delete(f"{ENDPOINT}/api/problems/{env['id']}/", headers=headers)
     except requests.exceptions.ConnectionError:
-        logger.warning("Connection error when clearing test environment")
+        logger.warning("Connection error when clearing test problem")
 
 
 @pytest.fixture(autouse=True)
 def setup_teardown():
     # Setup
-    clear_test_environment()
+    clear_test_problem()
     yield
     # Teardown
-    clear_test_environment()
+    clear_test_problem()
 
 
 def test_full_decorator_flow():
@@ -64,17 +64,17 @@ def test_full_decorator_flow():
         is_minimization=True,
     )(my_algorithm)
 
-    # Give the server a moment to process the environment creation
+    # Give the server a moment to process the problem creation
     time.sleep(1)
 
-    # Verify environment was created
+    # Verify problem was created
     try:
-        response = requests.get(f"{ENDPOINT}/api/environments/", headers=headers)
+        response = requests.get(f"{ENDPOINT}/api/problems/", headers=headers)
         assert response.status_code == 200
-        environments = response.json()
-        test_env = next((env for env in environments if env["name"] == "e2e_test_env"), None)
+        problems = response.json()
+        test_env = next((env for env in problems if env["name"] == "e2e_test_env"), None)
     except requests.exceptions.ConnectionError:
-        assert False, "Connection error when validating environment"
+        assert False, "Connection error when validating problem"
     assert test_env is not None
 
     # Run the decorated algorithm
@@ -85,7 +85,7 @@ def test_full_decorator_flow():
     assert result.value == 6
 
     # Verify instance was created
-    response = requests.get(f"{ENDPOINT}/api/instances/?environment__id={test_env['id']}", headers=headers)
+    response = requests.get(f"{ENDPOINT}/api/instances/?problem__id={test_env['id']}", headers=headers)
     assert response.status_code == 200
     instances = response.json()
     assert len(instances) == 1
@@ -100,7 +100,7 @@ def test_full_decorator_flow():
     assert results[0]["content"] == result.to_json()
 
     result = decorated_algo(test_input)
-    response = requests.get(f"{ENDPOINT}/api/instances/?environment__id={test_env['id']}", headers=headers)
+    response = requests.get(f"{ENDPOINT}/api/instances/?problem__id={test_env['id']}", headers=headers)
     assert response.status_code == 200
     instances = response.json()
     assert len(instances) == 2
@@ -120,12 +120,12 @@ def test_full_decorator_flow_with_solution_pull():
     time.sleep(1)
 
     try:
-        response = requests.get(f"{ENDPOINT}/api/environments/", headers=headers)
+        response = requests.get(f"{ENDPOINT}/api/problems/", headers=headers)
         assert response.status_code == 200
-        environments = response.json()
-        test_env = next((env for env in environments if env["name"] == "e2e_test_env_with_solution_pull"), None)
+        problems = response.json()
+        test_env = next((env for env in problems if env["name"] == "e2e_test_env_with_solution_pull"), None)
     except requests.exceptions.ConnectionError:
-        assert False, "Connection error when validating environment"
+        assert False, "Connection error when validating problem"
     assert test_env is not None
 
     result = decorated_algo(Instance(4))

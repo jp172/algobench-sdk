@@ -27,7 +27,7 @@ def algorithm(
             logger.warning("Falling back to normal algorithm execution")
             return algorithm_function
 
-        api_client.upload_environment(algorithm_function, feasibility_function, scoring_function, is_minimization)
+        api_client.upload_problem(algorithm_function, feasibility_function, scoring_function, is_minimization)
 
         def improve(instance, instance_id, solution, old_solution_feasible, old_score):
 
