@@ -17,7 +17,7 @@ pip install algobench
 Generally, we consider any problem of the form
 
 ```python
-def solve(instance: Instance) -> Solution
+def solve(instance: Instance) -> Solution:
     # do some complicated computation here
 ```
 
@@ -31,7 +31,7 @@ def feasible(instance: Instance, solution: Solution) -> bool:
 and for a feasible solution a score is determined by
 
 ```python
-def score(instance: Instance, solution: Solution) -> float
+def score(instance: Instance, solution: Solution) -> float:
     # compute score of the solution
 ```
 
