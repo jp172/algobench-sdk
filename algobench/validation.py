@@ -48,7 +48,7 @@ def validate_functions(algorithm_function, feasibility_function, scoring_functio
 
 def validate(algorithm_function, name: str, feasibility_function: any, scoring_function: any, API_KEY: str) -> bool:
     if len(name) == 0:
-        logger.warning("Environment name cannot be empty. Falling back to normal algorithm execution")
+        logger.warning("Problem name cannot be empty. Falling back to normal algorithm execution")
         return False
 
     if not (

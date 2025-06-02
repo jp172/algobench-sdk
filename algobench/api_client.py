@@ -16,7 +16,7 @@ class APIClient:
     api_key: str
     env_name: str
     algobench_url: str = "http://localhost:8000"
-    environment_id: str | None = None
+    problem_id: str | None = None
 
     def __post_init__(self):
         self.headers = {"Authorization": f"ApiKey {self.api_key}"}
@@ -25,7 +25,7 @@ class APIClient:
         if not self.api_key:
             return False
         try:
-            response = requests.get(f"{self.algobench_url}/api/environments?name={self.env_name}", headers=self.headers)
+            response = requests.get(f"{self.algobench_url}/api/problems?name={self.env_name}", headers=self.headers)
             if response.status_code != 200:
                 logger.warning(f"Login failed. Status code: {response.status_code}. {response.json()}")
                 return False
@@ -34,7 +34,7 @@ class APIClient:
             return False
 
         if len(response.json()) > 0:
-            self.environment_id = response.json()[0]["id"]
+            self.problem_id = response.json()[0]["id"]
 
         logger.info("Login successful.")
         return True
@@ -42,7 +42,7 @@ class APIClient:
     def upload_instance(self, instance) -> str | None:
         response = requests.post(
             f"{self.algobench_url}/api/instances/",
-            data={"content": convert_to_json(instance), "environment": self.environment_id},
+            data={"content": convert_to_json(instance), "problem": self.problem_id},
             headers=self.headers,
         )
 
@@ -64,7 +64,7 @@ class APIClient:
 
         return response.json()["id"]
 
-    def upload_environment(self, algorithm_function, feasibility, scoring, is_minimization: bool):
+    def upload_problem(self, algorithm_function, feasibility, scoring, is_minimization: bool):
 
         python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
         requirements = subprocess.check_output(["python", "-m", "pip", "freeze"]).decode("utf-8")
@@ -88,20 +88,20 @@ class APIClient:
             "name": self.env_name,
         }
 
-        if self.environment_id is not None:
+        if self.problem_id is not None:
             response = requests.put(
-                f"{self.algobench_url}/api/environments/{self.environment_id}/", json=json_data, headers=self.headers
+                f"{self.algobench_url}/api/problems/{self.problem_id}/", json=json_data, headers=self.headers
             )
             if response.status_code != 200:
-                logger.warning(f"Environment Upload failed. {response.json()}")
+                logger.warning(f"Problem upload failed. {response.json()}")
         else:
-            response = requests.post(f"{self.algobench_url}/api/environments/", json=json_data, headers=self.headers)
+            response = requests.post(f"{self.algobench_url}/api/problems/", json=json_data, headers=self.headers)
             if response.status_code != 201:
-                logger.warning(f"Environment Upload failed. {response.json()}")
-                logger.warning(f"Environment: {response.status_code}")
+                logger.warning(f"Problem upload failed. {response.json()}")
+                logger.warning(f"Problem: {response.status_code}")
             else:
-                self.environment_id = response.json()["id"]
-                logger.info("Environment uploaded successfully.")
+                self.problem_id = response.json()["id"]
+                logger.info("Problem uploaded successfully.")
 
     def pull_solution(self, instance_id: str, solution_type: type) -> object | None:
         response = requests.get(
