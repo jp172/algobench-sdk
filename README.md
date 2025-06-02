@@ -40,12 +40,13 @@ These three functions, together with definitions of `Instance` and `Solution` ma
 Once you wrote your optimization problem, apply algobench's decorator to the algorithm function.
 
 ```python
-@algorithm(name="Optimization Problem Name",
-             feasibility_function=feasible,
-             scoring_function=score,
-             api_key="API_KEY",
-             is_minimization=False,
-             additional_wait_seconds=2)
+@algorithm(
+    name="Optimization Problem Name",
+    feasibility_function=feasible,
+    scoring_function=score,
+    api_key="API_KEY",
+    is_minimization=False,
+    additional_wait_seconds=2)
 def solve(instance: Instance) -> Solution:
     # do some complicated computation here
 ```
@@ -60,49 +61,69 @@ def solve(instance: Instance) -> Solution:
 from pydantic import BaseModel
 from algobench import algorithm
 
+
 class Item(BaseModel):
     id: int
     weight: float
     value: float
 
+
 class Instance(BaseModel):
-    items: list[Item]
+    items: dict[int, Item]
     capacity: float
+
 
 class Solution(BaseModel):
     chosen_items: set[int]
 
+
 def check(instance: Instance, solution: Solution) -> bool:
-    instance_ids = {item.id for item in instance.items}
-    if not instance_ids.issuperset(solution.chosen_items):
+    if not set(instance.items.keys()).issuperset(solution.chosen_items):
         return False
-    return sum(instance.items[i].weight for i in solution.chosen_items) <= instance.capacity
+    return (
+        sum(instance.items[i].weight for i in solution.chosen_items)
+        <= instance.capacity
+    )
+
 
 def score(instance: Instance, solution: Solution) -> float:
     return sum(instance.items[i].value for i in solution.chosen_items)
 
-@algorithm(name="Knapsack",
-             feasibility_function=check,
-             scoring_function=score,
-             api_key=API_KEY,
-             is_minimization=False,
-             additional_wait_seconds=2)
+
+@algorithm(
+    name="Knapsack-new",
+    feasibility_function=check,
+    score_function=score,
+    api_key=API_KEY,
+    is_minimization=False,
+    additional_wait_seconds=2,
+)
 def solve(instance: Instance) -> Solution:
     remaining_capacity = instance.capacity
     chosen_ids = set()
-    for item in sorted(instance.items, key=lambda item: -item.value / item.weight):
+    for item in sorted(
+        instance.items.values(), key=lambda item: -item.value / item.weight
+    ):
         if item.weight <= remaining_capacity:
             chosen_ids.add(item.id)
             remaining_capacity -= item.weight
     return Solution(chosen_items=chosen_ids)
 
-def run_knapsack():
-    items = [Item(id=1, weight=1, value=1), Item(id=2, weight=2, value=2), Item(id=3, weight=3, value=3)]
-    instance = Instance(items=items, capacity=5)
-    solution = solve(instance)
-    print(feasible(instance, solution), score(instance, solution))
 
-run_knapsack()
+def main():
+    items = {
+        1: Item(id=1, weight=1, value=1.5),
+        2: Item(id=2, weight=2, value=2),
+        3: Item(id=3, weight=3, value=3),
+    }
+    instance_1 = Instance(items=items, capacity=5)
+
+    result = solve(instance_1)
+    print(check(instance_1, result), score(instance_1, result))
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 Initially we use a greedy algorithm to solve the knapsack problem, which results in item 1 and 2 being chosen. What you can see from the second run is that in the background, algobench found a better algorithm and comes up with the optimal solution, which is to choose items 2 and 3.
