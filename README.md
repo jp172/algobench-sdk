@@ -93,7 +93,7 @@ def score(instance: Instance, solution: Solution) -> float:
 @algorithm(
     name="Knapsack-new",
     feasibility_function=check,
-    score_function=score,
+    scoring_function=score,
     api_key=API_KEY,
     is_minimization=False,
     additional_wait_seconds=2,
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     main()
 ```
 
-Initially we use a greedy algorithm to solve the knapsack problem, which results in item 1 and 2 being chosen. What you can see from the second run is that in the background, algobench found a better algorithm and comes up with the optimal solution, which is to choose items 2 and 3.
+Initially we use a greedy algorithm to solve the knapsack problem, which results in item 1 and 2 being chosen. What you can see from the second run is that in the background, algobench evolved a better algorithm using an automated evolutionary process and computed the optimal solution, which is to choose items 2 and 3.
 
 ## Requirements and (current) limitations
 - The whole optimization problem needs to be contained in a single python file.
