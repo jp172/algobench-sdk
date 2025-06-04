@@ -27,7 +27,7 @@ class APIClient:
         try:
             response = requests.get(f"{self.algobench_url}/api/problems?name={self.env_name}", headers=self.headers)
             if response.status_code != 200:
-                logger.warning(f"Login failed. Status code: {response.status_code}. {response.json()}")
+                logger.warning(f"Login failed. Status code: {response.status_code}. {response.text}")
                 return False
         except requests.exceptions.ConnectionError:
             logger.warning("Login failed. Could not connect to the server.")

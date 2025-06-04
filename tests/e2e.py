@@ -60,7 +60,7 @@ def test_full_decorator_flow():
         name="e2e_test_env",
         feasibility_function=my_feasibility,
         scoring_function=my_scoring,
-        API_KEY=API_KEY,
+        api_key=API_KEY,
         is_minimization=True,
     )(my_algorithm)
 
@@ -112,7 +112,7 @@ def test_full_decorator_flow_with_solution_pull():
         name="e2e_test_env_with_solution_pull",
         feasibility_function=my_feasibility,
         scoring_function=my_scoring,
-        API_KEY=API_KEY,
+        api_key=API_KEY,
         is_minimization=False,
         additional_wait_seconds=30,
     )(my_algorithm)
