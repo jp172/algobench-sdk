@@ -12,17 +12,17 @@ def algorithm(
     name: str,
     feasibility_function: any,
     scoring_function: any,
-    API_KEY: str,
+    api_key: str,
     is_minimization: bool,
     additional_wait_seconds: int = 0,
 ):
 
     def create_decorator(algorithm_function):
-        if not validate(algorithm_function, name, feasibility_function, scoring_function, API_KEY):
+        if not validate(algorithm_function, name, feasibility_function, scoring_function, api_key):
             logger.warning("Falling back to normal algorithm execution")
             return algorithm_function
 
-        api_client = APIClient(API_KEY, name)
+        api_client = APIClient(api_key, name)
         if not api_client.login():
             logger.warning("Falling back to normal algorithm execution")
             return algorithm_function
