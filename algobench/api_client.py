@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class APIClient:
     api_key: str
     env_name: str
-    algobench_url: str = "http://localhost:8000"
+    algobench_url: str = "https://algobench.io"
     problem_id: str | None = None
 
     def __post_init__(self):
