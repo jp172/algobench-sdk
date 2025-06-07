@@ -4,7 +4,7 @@ Improve solutions for your optimization problem by adding a single decorator to 
 
 - Your optimization problem will be submitted to algobench to generate improved solution algorithms.
 - While your code solves an instance, algobench delivers improved solutions on-the-fly.
-- Visit [algobench.io](algobench.io) to check your optimization problems.
+- Visit [algobench.io](https://algobench.io) to check your optimization problems.
 
 ## Installation
 
@@ -51,7 +51,7 @@ def solve(instance: Instance) -> Solution:
     # do some complicated computation here
 ```
 
-- Obtain your API key from [algobench.io](algobench.io)
+- Obtain your API key from [algobench.io](https://algobench.io)
 - Specify whether you want to maximize or minimize the scoring function via `is_minimization`
 - With `additional_wait_seconds` you can specify how many more seconds you want to wait for algobench after your local algorithm has computed its solution.
 
