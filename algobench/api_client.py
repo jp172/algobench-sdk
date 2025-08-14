@@ -4,6 +4,7 @@ import sys
 import inspect
 from dataclasses import dataclass
 import logging
+import os
 
 from .file_handling import convert_to_json, convert_from_json
 
@@ -15,11 +16,11 @@ logger = logging.getLogger(__name__)
 class APIClient:
     api_key: str
     env_name: str
-    algobench_url: str = "https://algobench.io"
     problem_id: str | None = None
 
     def __post_init__(self):
         self.headers = {"Authorization": f"ApiKey {self.api_key}"}
+        self.algobench_url = os.getenv("ALGOBENCH_URL", "https://algobench.io")
 
     def login(self) -> bool:
         if not self.api_key:
@@ -47,7 +48,7 @@ class APIClient:
         )
 
         if response.status_code != 201:
-            logger.warning(f"Instance Upload failed. {response.json()}")
+            logger.warning(f"Instance Upload failed. {response.text}")
             return None
         return response.json()["id"]
 
@@ -59,7 +60,7 @@ class APIClient:
         )
 
         if response.status_code != 201:
-            logger.warning(f"Solution Upload failed. {response.json()}")
+            logger.warning(f"Solution Upload failed. {response.text}")
             return None
 
         return response.json()["id"]
@@ -93,11 +94,11 @@ class APIClient:
                 f"{self.algobench_url}/api/problems/{self.problem_id}/", json=json_data, headers=self.headers
             )
             if response.status_code != 200:
-                logger.warning(f"Problem upload failed. {response.json()}")
+                logger.warning(f"Problem upload failed. {response.text}")
         else:
             response = requests.post(f"{self.algobench_url}/api/problems/", json=json_data, headers=self.headers)
             if response.status_code != 201:
-                logger.warning(f"Problem upload failed. {response.json()}")
+                logger.warning(f"Problem upload failed. {response.text}")
                 logger.warning(f"Problem: {response.status_code}")
             else:
                 self.problem_id = response.json()["id"]
@@ -112,7 +113,7 @@ class APIClient:
             logger.info(f"No solution found for instance {instance_id}")
             return None
         elif response.status_code != 200:
-            logger.warning(f"Solution Pull failed. Status code: {response.status_code}. {response.json()}")
+            logger.warning(f"Solution Pull failed. Status code: {response.status_code}. {response.text}")
             return None
 
         data = response.json()
