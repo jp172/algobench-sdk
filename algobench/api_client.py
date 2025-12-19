@@ -94,7 +94,7 @@ class APIClient:
                 f"{self.algobench_url}/api/problems/{self.problem_id}/", json=json_data, headers=self.headers
             )
             if response.status_code != 200:
-                logger.warning(f"Problem upload failed. {response.text}")
+                logger.warning(f"Problem upload failed.  {response.text}")
         else:
             response = requests.post(f"{self.algobench_url}/api/problems/", json=json_data, headers=self.headers)
             if response.status_code != 201:
